@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 project(basic_qml)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
-find_package(Qt5 COMPONENTS Quick Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Core
+        Gui
+        Svg
+        Xml
+        Qml
+        Quick
+        QuickControls2 REQUIRED)
 find_package(Qt5QuickCompiler)
 qtquick_compiler_add_resources(RESOURCES qml.qrc)
 
@@ -26,7 +32,7 @@ if (ANDROID)
     add_qt_android_apk(basic_qml_apk basic_qml
             INSTALL
             )
-if (IOS)
+elseif (IOS)
     find_package(Qt5Core            CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
     find_package(Qt5Gui             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
     find_package(Qt5Qml             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
@@ -52,13 +58,10 @@ if (IOS)
             Qt5::QuickControls2
             )
 
-    include(QtStaticCMake/QtStaticCMake.cmake)
+    include(platforms/QtStaticCMake/QtStaticCMake.cmake)
 
     qt_generate_plugin_import(basicqml VERBOSE)
 
-    # EXTRA_PLUGIN are the one required by plugin loaded by qt_generate_plugin_import
-    # It's not automatic yet :( All this workflow might change in future version of qt
-    # with better and better cmake support
     qt_generate_qml_plugin_import(basicqml
             QML_SRC ${CMAKE_CURRENT_SOURCE_DIR}/
             EXTRA_PLUGIN
@@ -80,13 +83,43 @@ if (IOS)
             REQUIRES_FULL_SCREEN
             VERBOSE
             )
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+    add_executable(basic_qml
+            main.cpp
+            ${RESOURCES})
+
+    target_link_libraries(basic_qml PRIVATE
+            Qt5::Core
+            Qt5::Gui
+            Qt5::Svg
+            Qt5::Xml
+            Qt5::Qml
+            Qt5::Quick
+            Qt5::QuickControls2
+            )
+
+    include(platforms/QtStaticCMake/QtStaticCMake.cmake)
+
+    qt_generate_plugin_import(basic_qml VERBOSE)
+
+    qt_generate_qml_plugin_import(basic_qml
+            QML_SRC ${CMAKE_CURRENT_SOURCE_DIR}/
+            EXTRA_PLUGIN
+            QmlFolderListModelPlugin
+            QQuickLayoutsPlugin
+            )
+
+    include(platforms/Wasm32/CMakeLists.txt)
+
+    add_qt_wasm_app(basic_qml)
 else ()
     add_executable(basic_qml
             main.cpp
             ${RESOURCES})
+
+    target_link_libraries(basic_qml PRIVATE
+            Qt5::Widgets
+            Qt5::Quick
+            )
 endif ()
 
-target_link_libraries(basic_qml
-        Qt5::Widgets
-        Qt5::Quick
-        )
