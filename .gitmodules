@@ -1,0 +1,12 @@
+[submodule "cmake/QtAndroidCMake"]
+	path = cmake/QtAndroidCMake
+	url = https://github.com/ahmedyarub/QtAndroidCMake/
+[submodule "cmake/QtIosCMake"]
+	path = cmake/QtIosCMake
+	url = https://github.com/ahmedyarub/QtIosCMake/
+[submodule "cmake/QtStaticCMake"]
+	path = cmake/QtStaticCMake
+	url = https://github.com/ahmedyarub/QtStaticCMake/
+[submodule "cmake/QtWasmCMake"]
+	path = cmake/QtWasmCMake
+	url = https://github.com/ahmedyarub/QtWasmCMake/

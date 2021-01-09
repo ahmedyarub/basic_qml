@@ -7,14 +7,14 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(Qt5 COMPONENTS Quick Widgets REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Quick Widgets)
 find_package(Qt5QuickCompiler)
 qtquick_compiler_add_resources(RESOURCES qml.qrc)
 
 if (ANDROID)
-    include(cmake/Android/AddQtAndroidApk.cmake)
+    include(cmake/QtAndroidCMake/AddQtAndroidApk.cmake)
 
-    set(QT_ANDROID_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Android CACHE STRING "Source directory of AddQtAndroidApk.cmake")
+    set(QT_ANDROID_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake/QtAndroidCMake CACHE STRING "Source directory of AddQtAndroidApk.cmake")
     set(QT_ANDROID_QT_ROOT ${QT_ANDROID_QT_ROOT} CACHE STRING "Qt SDK root folder")
     set(QT_ANDROID_SDK_ROOT ${QT_ANDROID_SDK_ROOT} CACHE STRING "" FORCE)
     set(QT_ANDROID_NDK_ROOT ${QT_ANDROID_NDK_ROOT} CACHE STRING "" FORCE)
@@ -22,6 +22,11 @@ if (ANDROID)
     add_library(basic_qml
             main.cpp
             ${RESOURCES})
+
+    target_link_libraries(basic_qml PRIVATE
+            Qt5::Widgets
+            Qt5::Quick
+            )
 
     add_qt_android_apk(basic_qml_apk basic_qml
             NAME "Basic QML"
@@ -44,7 +49,7 @@ elseif (IOS)
             main.cpp
             qml.qrc)
 
-    INCLUDE(QtIosCMake/AddQtIosApp.cmake)
+    INCLUDE(cmake/QtIosCMake/AddQtIosApp.cmake)
 
     target_link_libraries(basicqml PRIVATE
             Qt5::Core
@@ -56,7 +61,7 @@ elseif (IOS)
             Qt5::QuickControls2
             )
 
-    include(platforms/QtStaticCMake/QtStaticCMake.cmake)
+    include(cmake/QtStaticCMake/QtStaticCMake.cmake)
 
     qt_generate_plugin_import(basicqml VERBOSE)
 
@@ -96,7 +101,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
             Qt5::QuickControls2
             )
 
-    include(platforms/QtStaticCMake/QtStaticCMake.cmake)
+    include(cmake/QtStaticCMake/QtStaticCMake.cmake)
 
     qt_generate_plugin_import(basic_qml VERBOSE)
 
@@ -107,7 +112,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
             QQuickLayoutsPlugin
             )
 
-    include(platforms/Wasm32/CMakeLists.txt)
+    include(cmake/QtWasmCMake/CMakeLists.txt)
 
     add_qt_wasm_app(basic_qml)
 else ()
