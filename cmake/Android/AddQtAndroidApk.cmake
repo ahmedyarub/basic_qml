@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
 # store the current source directory for future use
-set(QT_ANDROID_SOURCE_DIR ../..)
+set(QT_ANDROID_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # check the JAVA_HOME environment variable
 # (I couldn't find a way to set it from this script, it has to be defined outside)
@@ -32,7 +32,7 @@ if(NOT QT_ANDROID_SDK_ROOT)
         endif()
     endif()
 endif()
-string(REPLACE "\\" "." QT_ANDROID_SDK_ROOT ${QT_ANDROID_SDK_ROOT}) # androiddeployqt doesn't like backslashes in paths
+string(REPLACE "\\" "/" QT_ANDROID_SDK_ROOT ${QT_ANDROID_SDK_ROOT}) # androiddeployqt doesn't like backslashes in paths
 message(STATUS "Found Android SDK: ${QT_ANDROID_SDK_ROOT}")
 
 # find the Android NDK
@@ -45,8 +45,13 @@ if(NOT QT_ANDROID_NDK_ROOT)
         endif()
     endif()
 endif()
-string(REPLACE "\\" "." QT_ANDROID_NDK_ROOT ${QT_ANDROID_NDK_ROOT}) # androiddeployqt doesn't like backslashes in paths
+string(REPLACE "\\" "/" QT_ANDROID_NDK_ROOT ${QT_ANDROID_NDK_ROOT}) # androiddeployqt doesn't like backslashes in paths
 message(STATUS "Found Android NDK: ${QT_ANDROID_NDK_ROOT}")
+
+message(STATUS "ANDROID_NATIVE_API_LEVEL : ${ANDROID_NATIVE_API_LEVEL}")
+message(STATUS "ANDROID_PLATFORM : ${ANDROID_PLATFORM} (should be the same as ANDROID_NATIVE_API_LEVEL)")
+message(STATUS "ANDROID_STL : ${ANDROID_STL}")
+message(STATUS "ANDROID_ABI : ${ANDROID_ABI}")
 
 include(CMakeParseArguments)
 
@@ -58,8 +63,11 @@ include(CMakeParseArguments)
 #     VERSION_CODE 12
 #     PACKAGE_NAME "org.mycompany.myapp"
 #     PACKAGE_SOURCES ${CMAKE_CURRENT_LIST_DIR}/my-android-sources
-#     KEYSTORE ${CMAKE_CURRENT_LIST_DIR}/mykey.keystore myalias
+#     KEYSTORE ${CMAKE_CURRENT_LIST_DIR}/mykey.keystore
 #     KEYSTORE_PASSWORD xxxx
+#     KEY_ALIAS myalias
+#     KEY_PASSWORD xxxx
+#     QML_DIR path/to/qml
 #     DEPENDS a_linked_target "path/to/a_linked_library.so" ...
 #     INSTALL
 #)
@@ -67,7 +75,7 @@ include(CMakeParseArguments)
 macro(add_qt_android_apk TARGET SOURCE_TARGET)
 
     # parse the macro arguments
-    cmake_parse_arguments(ARG "INSTALL" "NAME;VERSION_CODE;PACKAGE_NAME;PACKAGE_SOURCES;KEYSTORE_PASSWORD" "DEPENDS;KEYSTORE" ${ARGN})
+    cmake_parse_arguments(ARG "INSTALL" "NAME;VERSION_CODE;PACKAGE_NAME;PACKAGE_SOURCES;KEYSTORE;KEYSTORE_PASSWORD;KEY_PASSWORD;KEY_ALIAS;QML_DIR" "DEPENDS" ${ARGN})
 
     # extract the full path of the source target binary
     set(QT_ANDROID_APP_PATH "$<TARGET_FILE:${SOURCE_TARGET}>")  # full file path to the app's main shared library
@@ -89,6 +97,13 @@ macro(add_qt_android_apk TARGET SOURCE_TARGET)
         set(QT_ANDROID_APP_NAME ${SOURCE_TARGET})
     endif()
 
+    # Define qml directory to scan import statement
+    if(ARG_QML_DIR)
+        set(QT_ANDROID_QML_DIR ${ARG_QML_DIR})
+    else()
+        set(QT_ANDROID_QML_DIR ${CMAKE_SOURCE_DIR})
+    endif()
+
     # define the application package name
     if(ARG_PACKAGE_NAME)
         set(QT_ANDROID_APP_PACKAGE_NAME ${ARG_PACKAGE_NAME})
@@ -96,16 +111,22 @@ macro(add_qt_android_apk TARGET SOURCE_TARGET)
         set(QT_ANDROID_APP_PACKAGE_NAME org.qtproject.${SOURCE_TARGET})
     endif()
 
-    # detect latest Android SDK build-tools revision
-    set(QT_ANDROID_SDK_BUILDTOOLS_REVISION "0.0.0")
-    file(GLOB ALL_BUILD_TOOLS_VERSIONS RELATIVE ${QT_ANDROID_SDK_ROOT}/build-tools ${QT_ANDROID_SDK_ROOT}/build-tools/*)
-    foreach(BUILD_TOOLS_VERSION ${ALL_BUILD_TOOLS_VERSIONS})
-        # find subfolder with greatest version
-        if (${BUILD_TOOLS_VERSION} VERSION_GREATER ${QT_ANDROID_SDK_BUILDTOOLS_REVISION})
-            set(QT_ANDROID_SDK_BUILDTOOLS_REVISION ${BUILD_TOOLS_VERSION})
-        endif()
-    endforeach()
-    message(STATUS "Found Android SDK build tools version: ${QT_ANDROID_SDK_BUILDTOOLS_REVISION}")
+    if(ANDROID_BUILDTOOLS_REVISION)
+        set(QT_ANDROID_SDK_BUILDTOOLS_REVISION ${ANDROID_BUILDTOOLS_REVISION})
+
+        message(STATUS "Use Android SDK build tools version: ${QT_ANDROID_SDK_BUILDTOOLS_REVISION} supplied by user")
+    else()
+        # detect latest Android SDK build-tools revision
+        set(QT_ANDROID_SDK_BUILDTOOLS_REVISION "0.0.0")
+        file(GLOB ALL_BUILD_TOOLS_VERSIONS RELATIVE ${QT_ANDROID_SDK_ROOT}/build-tools ${QT_ANDROID_SDK_ROOT}/build-tools/*)
+        foreach(BUILD_TOOLS_VERSION ${ALL_BUILD_TOOLS_VERSIONS})
+            # find subfolder with greatest version
+            if (${BUILD_TOOLS_VERSION} VERSION_GREATER ${QT_ANDROID_SDK_BUILDTOOLS_REVISION})
+                set(QT_ANDROID_SDK_BUILDTOOLS_REVISION ${BUILD_TOOLS_VERSION})
+            endif()
+        endforeach()
+        message(STATUS "Found Android SDK build tools version: ${QT_ANDROID_SDK_BUILDTOOLS_REVISION}")
+    endif()
 
     # get version code from arguments, or generate a fixed one if not provided
     set(QT_ANDROID_APP_VERSION_CODE ${ARG_VERSION_CODE})
@@ -145,11 +166,18 @@ macro(add_qt_android_apk TARGET SOURCE_TARGET)
         endif()
         configure_file(${QT_ANDROID_MANIFEST_TEMPLATE} ${CMAKE_CURRENT_BINARY_DIR}/AndroidManifest.xml @ONLY)
 
+        if(CMAKE_VERSION VERSION_LESS 3.17)
+          set(CMAKE_RM remove)
+        else()
+          set(CMAKE_RM rm)
+        endif()
+
         # define commands that will be added before the APK target build commands, to refresh the source package directory
         set(QT_ANDROID_PRE_COMMANDS ${QT_ANDROID_PRE_COMMANDS} COMMAND ${CMAKE_COMMAND} -E remove_directory ${QT_ANDROID_APP_PACKAGE_SOURCE_ROOT}) # clean the destination directory
         set(QT_ANDROID_PRE_COMMANDS ${QT_ANDROID_PRE_COMMANDS} COMMAND ${CMAKE_COMMAND} -E make_directory ${QT_ANDROID_APP_PACKAGE_SOURCE_ROOT}) # re-create it
         if(ARG_PACKAGE_SOURCES)
             set(QT_ANDROID_PRE_COMMANDS ${QT_ANDROID_PRE_COMMANDS} COMMAND ${CMAKE_COMMAND} -E copy_directory ${ARG_PACKAGE_SOURCES} ${QT_ANDROID_APP_PACKAGE_SOURCE_ROOT}) # copy the user package
+            set(QT_ANDROID_PRE_COMMANDS ${QT_ANDROID_PRE_COMMANDS} COMMAND ${CMAKE_COMMAND} -E ${CMAKE_RM} -f ${QT_ANDROID_APP_PACKAGE_SOURCE_ROOT}/AndroidManifest.xml.in) # copy the user package
         endif()
         set(QT_ANDROID_PRE_COMMANDS ${QT_ANDROID_PRE_COMMANDS} COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/AndroidManifest.xml ${QT_ANDROID_APP_PACKAGE_SOURCE_ROOT}/AndroidManifest.xml) # copy the generated manifest
     endif()
@@ -255,14 +283,28 @@ macro(add_qt_android_apk TARGET SOURCE_TARGET)
         INPUT ${CMAKE_CURRENT_BINARY_DIR}/qtdeploy.json.in
     )
     # 3. Configure build.gradle to properly work with Android Studio import
-    set(QT_ANDROID_NATIVE_API_LEVEL ${ANDROID_NATIVE_API_LEVEL})
-    configure_file(${QT_ANDROID_SOURCE_DIR}/build.gradle.in ${QT_ANDROID_APP_BINARY_DIR}/build.gradle @ONLY)
+    if(ANDROID_NATIVE_API_LEVEL)
+        set(QT_ANDROID_NATIVE_API_LEVEL ${ANDROID_NATIVE_API_LEVEL})
+    else()
+        set(QT_ANDROID_NATIVE_API_LEVEL "qtTargetSdkVersion")
+    endif()
+    if(${Qt5Core_VERSION} VERSION_GREATER_EQUAL 5.15)
+        set(QT_ANDROID_BUILD_GRADLE_FILE build.gradle.5.15.in)
+    elseif(${Qt5Core_VERSION} VERSION_GREATER_EQUAL 5.14)
+        set(QT_ANDROID_BUILD_GRADLE_FILE build.gradle.5.14.in)
+    else()
+        set(QT_ANDROID_BUILD_GRADLE_FILE build.gradle.in)
+    endif()
+    configure_file(${QT_ANDROID_SOURCE_DIR}/${QT_ANDROID_BUILD_GRADLE_FILE} ${QT_ANDROID_APP_BINARY_DIR}/build.gradle @ONLY)
 
     # check if the apk must be signed
     if(ARG_KEYSTORE)
-        set(SIGN_OPTIONS --sign ${ARG_KEYSTORE})
+        set(SIGN_OPTIONS --sign ${ARG_KEYSTORE} ${ARG_KEY_ALIAS})
         if(ARG_KEYSTORE_PASSWORD)
             set(SIGN_OPTIONS ${SIGN_OPTIONS} --storepass ${ARG_KEYSTORE_PASSWORD})
+        endif()
+        if(ARG_KEY_PASSWORD)
+            set(SIGN_OPTIONS ${SIGN_OPTIONS} --keypass ${ARG_KEY_PASSWORD})
         endif()
     endif()
 
@@ -279,7 +321,11 @@ macro(add_qt_android_apk TARGET SOURCE_TARGET)
     # determine the build type to pass to androiddeployqt
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND NOT ARG_KEYSTORE)
         set(QT_ANDROID_BUILD_TYPE --debug)
-    elseif()
+    else()
+        message(STATUS "KEYSTORE : ${ARG_KEYSTORE}")
+        message(STATUS "KEYSTORE_PASSWORD : ${ARG_KEYSTORE_PASSWORD}")
+        message(STATUS "KEY_ALIAS : ${ARG_KEY_ALIAS}")
+        message(STATUS "KEY_PASSWORD : ${ARG_KEY_PASSWORD}")
         set(QT_ANDROID_BUILD_TYPE --release)
     endif()
 
@@ -290,6 +336,7 @@ macro(add_qt_android_apk TARGET SOURCE_TARGET)
         DEPENDS ${SOURCE_TARGET}
         ${QT_ANDROID_PRE_COMMANDS}
         # it seems that recompiled libraries are not copied if we don't remove them first
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${SOURCE_TARGET}> .
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${QT_ANDROID_APP_BINARY_DIR}/libs/${ANDROID_ABI}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${QT_ANDROID_APP_BINARY_DIR}/libs/${ANDROID_ABI}
         COMMAND ${CMAKE_COMMAND} -E copy ${QT_ANDROID_APP_PATH} ${QT_ANDROID_APP_BINARY_DIR}/libs/${ANDROID_ABI}

@@ -1,20 +1,20 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 project(basic_qml)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(Qt5 COMPONENTS Quick Widgets REQUIRED)
 find_package(Qt5QuickCompiler)
 qtquick_compiler_add_resources(RESOURCES qml.qrc)
 
 if (ANDROID)
-    include(platforms/Android/AddQtAndroidApk.cmake)
+    include(cmake/Android/AddQtAndroidApk.cmake)
 
-    set(QT_ANDROID_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/platforms/Android CACHE STRING "Source directory of AddQtAndroidApk.cmake")
+    set(QT_ANDROID_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Android CACHE STRING "Source directory of AddQtAndroidApk.cmake")
     set(QT_ANDROID_QT_ROOT ${QT_ANDROID_QT_ROOT} CACHE STRING "Qt SDK root folder")
     set(QT_ANDROID_SDK_ROOT ${QT_ANDROID_SDK_ROOT} CACHE STRING "" FORCE)
     set(QT_ANDROID_NDK_ROOT ${QT_ANDROID_NDK_ROOT} CACHE STRING "" FORCE)
@@ -24,9 +24,13 @@ if (ANDROID)
             ${RESOURCES})
 
     add_qt_android_apk(basic_qml_apk basic_qml
+            NAME "Basic QML"
+            VERSION_CODE 2
+            PACKAGE_NAME "com.mindpower.basic_qml"
+            PACKAGE_SOURCES  ${CMAKE_CURRENT_SOURCE_DIR}/platforms/android
             INSTALL
             )
-if (IOS)
+elseif (IOS)
     find_package(Qt5Core            CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
     find_package(Qt5Gui             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
     find_package(Qt5Qml             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
