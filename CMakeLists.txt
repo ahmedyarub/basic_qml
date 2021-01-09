@@ -7,8 +7,8 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(Qt5 REQUIRED COMPONENTS Quick Widgets)
-find_package(Qt5QuickCompiler)
+find_package(Qt5 REQUIRED COMPONENTS Quick Widgets QuickCompiler)
+
 qtquick_compiler_add_resources(RESOURCES qml.qrc)
 
 if (ANDROID)
@@ -36,34 +36,20 @@ if (ANDROID)
             INSTALL
             )
 elseif (IOS)
-    find_package(Qt5Core            CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5Gui             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5Qml             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5QmlWorkerScript CONFIG QUIET    NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5Quick           CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5QuickControls2  CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5Svg             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-    find_package(Qt5Xml             CONFIG REQUIRED NO_CMAKE_SYSTEM_PATH)
-
     add_executable(basicqml
             main.cpp
             qml.qrc)
 
-    INCLUDE(cmake/QtIosCMake/AddQtIosApp.cmake)
+    include(cmake/QtIosCMake/AddQtIosApp.cmake)
 
     target_link_libraries(basicqml PRIVATE
-            Qt5::Core
-            Qt5::Gui
-            Qt5::Svg
-            Qt5::Xml
-            Qt5::Qml
+            Qt5::Widgets
             Qt5::Quick
-            Qt5::QuickControls2
             )
 
     include(cmake/QtStaticCMake/QtStaticCMake.cmake)
 
-    qt_generate_plugin_import(basicqml VERBOSE)
+    qt_generate_plugin_import(basicqml)
 
     qt_generate_qml_plugin_import(basicqml
             QML_SRC ${CMAKE_CURRENT_SOURCE_DIR}/
@@ -73,7 +59,6 @@ elseif (IOS)
             QtQuickVirtualKeyboardStylesPlugin
             QmlFolderListModelPlugin
             QQuickLayoutsPlugin
-            VERBOSE
             )
 
     add_qt_ios_app(basicqml
@@ -84,7 +69,6 @@ elseif (IOS)
             LONG_VERSION "1.2.3.456"
             SUPPORT_IPHONE
             REQUIRES_FULL_SCREEN
-            VERBOSE
             )
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
     add_executable(basic_qml

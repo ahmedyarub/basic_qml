@@ -10,3 +10,6 @@
 [submodule "cmake/QtWasmCMake"]
 	path = cmake/QtWasmCMake
 	url = https://github.com/ahmedyarub/QtWasmCMake/
+[submodule "cmake/IosCMakeToolchain"]
+	path = cmake/IosCMakeToolchain
+	url = https://github.com/ahmedyarub/IosCMakeToolchain
