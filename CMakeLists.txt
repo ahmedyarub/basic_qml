@@ -56,13 +56,10 @@ elseif (IOS)
             Qt5::QuickControls2
             )
 
-    include(QtStaticCMake/QtStaticCMake.cmake)
+    include(platforms/QtStaticCMake/QtStaticCMake.cmake)
 
     qt_generate_plugin_import(basicqml VERBOSE)
 
-    # EXTRA_PLUGIN are the one required by plugin loaded by qt_generate_plugin_import
-    # It's not automatic yet :( All this workflow might change in future version of qt
-    # with better and better cmake support
     qt_generate_qml_plugin_import(basicqml
             QML_SRC ${CMAKE_CURRENT_SOURCE_DIR}/
             EXTRA_PLUGIN
@@ -84,13 +81,43 @@ elseif (IOS)
             REQUIRES_FULL_SCREEN
             VERBOSE
             )
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+    add_executable(basic_qml
+            main.cpp
+            ${RESOURCES})
+
+    target_link_libraries(basic_qml PRIVATE
+            Qt5::Core
+            Qt5::Gui
+            Qt5::Svg
+            Qt5::Xml
+            Qt5::Qml
+            Qt5::Quick
+            Qt5::QuickControls2
+            )
+
+    include(platforms/QtStaticCMake/QtStaticCMake.cmake)
+
+    qt_generate_plugin_import(basic_qml VERBOSE)
+
+    qt_generate_qml_plugin_import(basic_qml
+            QML_SRC ${CMAKE_CURRENT_SOURCE_DIR}/
+            EXTRA_PLUGIN
+            QmlFolderListModelPlugin
+            QQuickLayoutsPlugin
+            )
+
+    include(platforms/Wasm32/CMakeLists.txt)
+
+    add_qt_wasm_app(basic_qml)
 else ()
     add_executable(basic_qml
             main.cpp
             ${RESOURCES})
+
+    target_link_libraries(basic_qml PRIVATE
+            Qt5::Widgets
+            Qt5::Quick
+            )
 endif ()
 
-target_link_libraries(basic_qml
-        Qt5::Widgets
-        Qt5::Quick
-        )
