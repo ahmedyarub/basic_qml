@@ -32,7 +32,7 @@ if (ANDROID)
             NAME "Basic QML"
             VERSION_CODE 2
             PACKAGE_NAME "com.mindpower.basic_qml"
-            PACKAGE_SOURCES  ${CMAKE_CURRENT_SOURCE_DIR}/platforms/android
+            PACKAGE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/platforms/android
             INSTALL
             )
 elseif (IOS)
@@ -70,27 +70,15 @@ elseif (IOS)
             SUPPORT_IPHONE
             REQUIRES_FULL_SCREEN
             )
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
-    find_package(Qt5 COMPONENTS Core
-            Gui
-            Svg
-            Xml
-            Qml
-            Quick
-            QuickControls2 REQUIRED)
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+    find_package(Qt5 COMPONENTS QuickControls2 REQUIRED)
 
     add_executable(basic_qml
             main.cpp
             qml.qrc)
 
     target_link_libraries(basic_qml PRIVATE
-            Qt5::Widgets
-            Qt5::Quick
-            Qt::Core
-            Qt::Gui
-            Qt::Svg
-            Qt::Xml
-            Qt::Qml
+            Qt::Widgets
             Qt::Quick
             Qt::QuickControls2
             )
