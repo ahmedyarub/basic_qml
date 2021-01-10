@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 project(basic_qml)
 
 set(CMAKE_AUTOMOC ON)
@@ -21,7 +21,7 @@ if (ANDROID)
 
     add_library(basic_qml
             main.cpp
-            ${RESOURCES})
+            qml.qrc)
 
     target_link_libraries(basic_qml PRIVATE
             Qt5::Widgets
@@ -71,23 +71,33 @@ elseif (IOS)
             REQUIRES_FULL_SCREEN
             )
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+    find_package(Qt5 COMPONENTS Core
+            Gui
+            Svg
+            Xml
+            Qml
+            Quick
+            QuickControls2 REQUIRED)
+
     add_executable(basic_qml
             main.cpp
-            ${RESOURCES})
+            qml.qrc)
 
     target_link_libraries(basic_qml PRIVATE
-            Qt5::Core
-            Qt5::Gui
-            Qt5::Svg
-            Qt5::Xml
-            Qt5::Qml
+            Qt5::Widgets
             Qt5::Quick
-            Qt5::QuickControls2
+            Qt::Core
+            Qt::Gui
+            Qt::Svg
+            Qt::Xml
+            Qt::Qml
+            Qt::Quick
+            Qt::QuickControls2
             )
 
     include(cmake/QtStaticCMake/QtStaticCMake.cmake)
 
-    qt_generate_plugin_import(basic_qml VERBOSE)
+    qt_generate_plugin_import(basic_qml)
 
     qt_generate_qml_plugin_import(basic_qml
             QML_SRC ${CMAKE_CURRENT_SOURCE_DIR}/
@@ -98,15 +108,15 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
 
     include(cmake/QtWasmCMake/CMakeLists.txt)
 
-    add_qt_wasm_app(basic_qml)
+    add_qt_wasm_app(basic_qml INITIAL_MEMORY 32MB)
 else ()
     add_executable(basic_qml
             main.cpp
-            ${RESOURCES})
+            qml.qrc)
 
     target_link_libraries(basic_qml PRIVATE
-            Qt5::Widgets
-            Qt5::Quick
+            Qt::Widgets
+            Qt::Quick
             )
 endif ()
 
